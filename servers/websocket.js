@@ -17,7 +17,7 @@ ws.on("connection", (socket,_)=>{
                 socket.send(JSON.stringify({
                     type,
                     data: clients.size
-                }))
+                }));
         }
         clients.set()
         console.log('data', data);
