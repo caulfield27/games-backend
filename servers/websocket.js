@@ -1,5 +1,5 @@
 const server = require("./server");
-const nanoid = require("nanoid");
+const { v4: uuidv4 } = require("uuid");
 const WebSocket = require("ws");
 
 const ws = new WebSocket.Server({ server });
@@ -14,8 +14,8 @@ function sendToAll(msg) {
 }
 
 ws.on("connection", (socket, _) => {
-  socket.on("message", (data) => {
-    const parsedData = JSON.parse(data);
+  socket.on("message", (msg) => {
+    const parsedData = JSON.parse(msg);
     const { type, data } = parsedData;
     switch (type) {
       case "init":
@@ -44,7 +44,7 @@ ws.on("connection", (socket, _) => {
         };
         if (selectionStack.length) {
           const opponent = selectionStack.pop();
-          const roomId = nanoid();
+          const roomId = uuidv4();
           gameRooms.set(roomId, [player, opponent]);
           const oppSocket = clients.get(opponent.id);
           socket.send(
