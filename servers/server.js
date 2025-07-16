@@ -19,11 +19,13 @@ const server = http.createServer((req, res) => {
     if (req.method === "OPTIONS") {
       res.writeHead(204);
       res.end();
+      return;
     }
 
     if (!routes[url]) {
       res.writeHead(404);
       res.end();
+      return;
     }
 
     routes[url](req, res);
@@ -34,7 +36,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(3000, () => {
-  console.log("Сервер запущен на http://localhost:3000");
+  console.log(`Сервер запущен на ${process.env.ORIGIN_URL}`);
 });
 
 module.exports = server;
