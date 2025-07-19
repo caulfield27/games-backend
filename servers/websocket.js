@@ -28,14 +28,6 @@ ws.on("connection", (socket, _) => {
           })
         );
         break;
-      case "activeUsersCount":
-        socket.send(
-          JSON.stringify({
-            type,
-            data: clients.size - 1,
-          })
-        );
-        break;
       case "selection":
         const { name } = data;
         const player = {
