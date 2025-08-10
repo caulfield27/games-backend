@@ -33,6 +33,7 @@ ws.on("connection", (socket, _) => {
         const player = {
           name,
           id: socket?.clientId,
+          isReady: false
         };
         if (selectionStack.length) {
           const opponent = selectionStack.pop();
@@ -40,8 +41,6 @@ ws.on("connection", (socket, _) => {
           if (oppSocket) {
             const roomId = uuidv4();
             gameRooms.set(roomId, [player, opponent]);
-
-            const turn = Math.round(Math.random());
             socket.send(
               JSON.stringify({
                 type: "gameFound",
@@ -49,18 +48,6 @@ ws.on("connection", (socket, _) => {
                   name: opponent.name,
                   sessionId: roomId,
                 },
-              })
-            );
-            socket.send(
-              JSON.stringify({
-                type: "turn",
-                data: turn === 0 ? 0 : 1,
-              })
-            );
-            oppSocket.send(
-              JSON.stringify({
-                type: "turn",
-                data: turn === 1 ? 0 : 1,
               })
             );
             oppSocket.send(
@@ -180,7 +167,6 @@ ws.on("connection", (socket, _) => {
           });
           const [firstPlayer, _] = players;
           const opponent = clients.get(firstPlayer.id);
-          const turn = Math.round(Math.random());
           socket.send(
             JSON.stringify({
               type: "gameFound",
@@ -190,23 +176,11 @@ ws.on("connection", (socket, _) => {
               },
             })
           );
-          socket.send(
-            JSON.stringify({
-              type: "turn",
-              data: turn === 0 ? 0 : 1,
-            })
-          );
-          opponent.send(
-            JSON.stringify({
-              type: "turn",
-              data: turn === 1 ? 0 : 1,
-            })
-          );
           opponent.send(
             JSON.stringify({
               type: "gameFound",
               data: {
-                name: "",
+                name: "player1337",
                 sessionId: key,
               },
             })
@@ -214,11 +188,50 @@ ws.on("connection", (socket, _) => {
         } else {
           gameRooms.set(key, [
             {
-              name: "",
+              name: "player1337",
               id: socket.clientId,
             },
           ]);
         }
+        break;
+      case "ready":
+        const curRoom = gameRooms.get(data)
+        if (curRoom) {
+          const curPlayer = curRoom.find((elem) => elem.id === socket?.clientId);
+          const opPlayer = curRoom.find((elem) => elem.id !== socket?.clientId);
+          curPlayer.isReady = true;
+          if (opPlayer) {
+            const opSocket = clients.get(opPlayer.id)
+            if (opPlayer.isReady) {
+              const turn = Math.round(Math.random());
+              if (opSocket) {
+                socket.send(JSON.stringify({ type: "turn", data: turn }));
+                socket.send(JSON.stringify({ type: "gameStart" }));
+                opSocket.send(JSON.stringify({ type: "turn", data: turn === 1 ? 0 : 1 }));
+                opSocket.send(JSON.stringify({ type: "gameStart", data: "" }));
+              }
+            } else {
+              if (opSocket) {
+                opSocket.send(JSON.stringify({ type: "ready", data: "" }));
+              }
+            }
+          }
+        }
+        break;
+      case "message":
+        const { value, curRoomId } = data;
+        const curPlayers = gameRooms.get(curRoomId);
+        if (curPlayers) {
+          const op = curPlayers.find((player) => player.id !== socket.clientId);
+          const opSocket = clients.get(op.id);
+          if (opSocket) {
+            opSocket.send(JSON.stringify({
+              type: "message",
+              data: value
+            }))
+          }
+        };
+        break;
     }
   });
 
