@@ -1,19 +1,25 @@
-const server = require("./server");
-const { v4: uuidv4 } = require("uuid");
-const WebSocket = require("ws");
+import server from './server';
+import { v4 as uuidv4 } from 'uuid';
+import {WebSocket, WebSocketServer} from 'ws';
+import { Player, WSMessage } from '../types';
 
-const ws = new WebSocket.Server({ server });
-const clients = new Map();
-const gameRooms = new Map();
-const selectionStack = [];
+interface CustomSocket extends WebSocket {
+  clientId?: string;
+}
 
-function sendToAll(msg) {
+
+const ws = new WebSocketServer({ server });
+const clients = new Map<string, CustomSocket>();
+const gameRooms = new Map<string, Player[]>();
+const selectionStack: Player[] = [];
+
+function sendToAll(msg: string) {
   for (const [_, socket] of clients) {
     sendMessage(socket, msg);
   }
 }
 
-function sendMessage(socket, msg) {
+function sendMessage(socket: CustomSocket | undefined, msg: string) {
   try {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(msg);
@@ -23,10 +29,10 @@ function sendMessage(socket, msg) {
   }
 }
 
-ws.on("connection", (socket, _) => {
+ws.on("connection", (socket: CustomSocket) => {
   socket.on("message", (msg) => {
     try {
-      const parsedData = JSON.parse(msg);
+      const parsedData: WSMessage = JSON.parse(msg.toString());
       const { type, data } = parsedData;
       switch (type) {
         case "init":
@@ -41,13 +47,13 @@ ws.on("connection", (socket, _) => {
           break;
         case "selection":
           const { name } = data;
-          const player = {
+          const player: Player = {
             name,
-            id: socket?.clientId,
+            id: socket.clientId!,
             isReady: false
           };
           if (selectionStack.length) {
-            const opponent = selectionStack.pop();
+            const opponent = selectionStack.pop()!;
             const oppSocket = clients.get(opponent.id);
             if (oppSocket) {
               const roomId = uuidv4();
@@ -75,7 +81,7 @@ ws.on("connection", (socket, _) => {
         case "closeRoom":
           const { roomId } = data;
           if (gameRooms.has(roomId)) {
-            const players = gameRooms.get(roomId);
+            const players = gameRooms.get(roomId)!;
             for (const player of players) {
               if (player.id !== socket.clientId) {
                 const playerSocket = clients.get(player.id);
@@ -93,7 +99,7 @@ ws.on("connection", (socket, _) => {
         case "check":
           const { sessionId, coordinates } = data;
           if (gameRooms.has(sessionId)) {
-            const players = gameRooms.get(sessionId);
+            const players = gameRooms.get(sessionId)!;
             for (const player of players) {
               if (player.id !== socket.clientId) {
                 const playerSocket = clients.get(player.id);
@@ -118,7 +124,7 @@ ws.on("connection", (socket, _) => {
               if (player.id !== socket.clientId) {
                 const playerSocket = clients.get(player.id);
                 if (playerSocket) {
-                  const msg = {
+                  const msg: any = {
                     type: "status",
                     data: {
                       status,
@@ -157,10 +163,10 @@ ws.on("connection", (socket, _) => {
         case "invite":
           const { key } = data;
           if (gameRooms.has(key)) {
-            const players = gameRooms.get(key);
+            const players = gameRooms.get(key)!;
             players.push({
               name: "",
-              id: socket.clientId,
+              id: socket.clientId!,
             });
             const [firstPlayer, _] = players;
             const opponent = clients.get(firstPlayer.id);
@@ -182,7 +188,7 @@ ws.on("connection", (socket, _) => {
             gameRooms.set(key, [
               {
                 name: "player1337",
-                id: socket.clientId,
+                id: socket.clientId!,
               },
             ]);
           }
@@ -190,8 +196,8 @@ ws.on("connection", (socket, _) => {
         case "ready":
           const curRoom = gameRooms.get(data)
           if (curRoom) {
-            const curPlayer = curRoom.find((elem) => elem.id === socket?.clientId);
-            const opPlayer = curRoom.find((elem) => elem.id !== socket?.clientId);
+            const curPlayer = curRoom.find((elem) => elem.id === socket.clientId)!;
+            const opPlayer = curRoom.find((elem) => elem.id !== socket.clientId)!;
             curPlayer.isReady = true;
             if (opPlayer) {
               const opSocket = clients.get(opPlayer.id)
@@ -215,7 +221,7 @@ ws.on("connection", (socket, _) => {
           const { value, curRoomId } = data;
           const curPlayers = gameRooms.get(curRoomId);
           if (curPlayers) {
-            const op = curPlayers.find((player) => player.id !== socket.clientId);
+            const op = curPlayers.find((player) => player.id !== socket.clientId)!;
             const opSocket = clients.get(op.id);
             if (opSocket) {
               sendMessage(opSocket, JSON.stringify({
