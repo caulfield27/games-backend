@@ -1,4 +1,3 @@
-import server from './server';
 import { v4 as uuidv4 } from 'uuid';
 import {WebSocket, WebSocketServer} from 'ws';
 import { Player, WSMessage } from '../types';
@@ -8,7 +7,7 @@ interface CustomSocket extends WebSocket {
 }
 
 
-const ws = new WebSocketServer({ server });
+const ws = new WebSocketServer({ noServer: true });
 const clients = new Map<string, CustomSocket>();
 const gameRooms = new Map<string, Player[]>();
 const selectionStack: Player[] = [];
@@ -251,3 +250,6 @@ ws.on("connection", (socket: CustomSocket) => {
     }
   });
 });
+
+
+export default ws;
