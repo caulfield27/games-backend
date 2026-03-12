@@ -68,7 +68,6 @@ const server = http.createServer(
 server.on("upgrade", (req, socket, head) => {
   const { url } = req;
   if (url === apiRoutes.chess) {
-    
     chessWs.handleUpgrade(req, socket, head, (ws) => {
       chessWs.emit("connection", ws, req);
     });
