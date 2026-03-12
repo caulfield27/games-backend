@@ -1,5 +1,5 @@
 import http, { IncomingMessage, ServerResponse } from "http";
-// import { controllers } from "../controllers/controllers";
+import { controllers } from "../controllers/controllers";
 import battleshipWs from "../webSocket/battleship-ws";
 import chessWs from "../webSocket/chess-ws";
 import { apiRoutes } from "../routes/routes";
@@ -26,37 +26,37 @@ const server = http.createServer(
       const parsedUrl = new URL(req.url || "", `http://${req.headers.host}`);
       const pathname = parsedUrl.pathname;
 
-      // if (!pathname || !controllers[pathname]) {
-      //   res.writeHead(404);
-      //   res.end();
-      //   return;
-      // }
+      if (!pathname || !controllers[pathname]) {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
 
-      // if (
-      //   req.method === "POST" ||
-      //   req.method === "PUT" ||
-      //   req.method === "PATCH"
-      // ) {
-      //   const body: string[] = [];
-      //   req.on("data", (chunk) => {
-      //     body.push(chunk);
-      //   });
-      //   req.on("end", () => {
-      //     try {
-      //       const data = JSON.parse(body.join(""));
-      //       controllers[pathname](req, res, data);
-      //     } catch (e: any) {
-      //       console.error(e);
-      //       res.writeHead(500, {
-      //         "content-type": "application/json",
-      //       });
-      //       res.end(JSON.stringify({ message: e?.message ?? "" }));
-      //       return;
-      //     }
-      //   });
-      // } else {
-      //   controllers[pathname](req, res);
-      // }
+      if (
+        req.method === "POST" ||
+        req.method === "PUT" ||
+        req.method === "PATCH"
+      ) {
+        const body: string[] = [];
+        req.on("data", (chunk) => {
+          body.push(chunk);
+        });
+        req.on("end", () => {
+          try {
+            const data = JSON.parse(body.join(""));
+            controllers[pathname](req, res, data);
+          } catch (e: any) {
+            console.error(e);
+            res.writeHead(500, {
+              "content-type": "application/json",
+            });
+            res.end(JSON.stringify({ message: e?.message ?? "" }));
+            return;
+          }
+        });
+      } else {
+        controllers[pathname](req, res);
+      }
       res.end()
     } catch (e) {
       res.writeHead(500);

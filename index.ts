@@ -1,2 +1,3 @@
+import dotenv from "dotenv";
 import './servers/server';
-import './utils/keepAlive';
+dotenv.config();
