@@ -28,11 +28,12 @@ enum MessageType {
   CANCEL_SELECTION = "cancel_selection",
   MOVE = "move",
   PROMOTE = "promote",
+  INVITE = "invite",
 }
 
 const ws = new WebSocketServer({ noServer: true });
 let queue: CustomSocket[] = [];
-const gameRooms = new Map<string, [CustomSocket, CustomSocket]>();
+const gameRooms = new Map<string, CustomSocket[]>();
 
 function getDestination(roomId: string | null, socket: CustomSocket): CustomSocket | null {
   if (!roomId) return null;
@@ -51,14 +52,14 @@ function sendMessage(socket: CustomSocket, data: unknown) {
 ws.on("connection", (socket: CustomSocket) => {
   socket.clientId = uuidv4();
   socket.on("message", (raw) => {
-    const message = JSON.parse(raw.toString()) as Message;
-    switch (message.type) {
-      case MessageType.SELECTION:
-        if (!queue.length) {
-          queue.push(socket);
-        } else {
-          const opponent = queue.pop()!;
-          if (opponent.readyState === WebSocket.OPEN) {
+    try {
+      const message = JSON.parse(raw.toString()) as Message;
+      switch (message.type) {
+        case MessageType.SELECTION:
+          if (!queue.length) {
+            queue.push(socket);
+          } else {
+            const opponent = queue.pop()!;
             const roomId = uuidv4();
             gameRooms.set(roomId, [socket, opponent]);
             const random = Math.round(Math.random());
@@ -81,39 +82,86 @@ ws.on("connection", (socket: CustomSocket) => {
               },
             });
           }
-        }
-        break;
-      case MessageType.CANCEL_SELECTION:
-        queue = queue.filter((s) => s.clientId !== socket.clientId);
-        break;
-      case MessageType.MOVE:
-        {
-          const data = message.data as MoveData;
+          break;
+        case MessageType.CANCEL_SELECTION:
+          queue = queue.filter((s) => s.clientId !== socket.clientId);
+          break;
+        case MessageType.MOVE:
+          {
+            const data = message.data as MoveData;
+            const destination = getDestination(data.roomId, socket);
+            if (!destination) return;
+            sendMessage(destination, {
+              type: MessageType.MOVE,
+              data: {
+                from: data.from,
+                to: data.to,
+              },
+            });
+          }
+          break;
+        case MessageType.PROMOTE: {
+          const data = message.data as PromoteData;
           const destination = getDestination(data.roomId, socket);
           if (!destination) return;
           sendMessage(destination, {
-            type: MessageType.MOVE,
+            type: MessageType.PROMOTE,
             data: {
-              from: data.from,
-              to: data.to,
+              figure: data.figure,
+              idx: data.idx,
+              promoteIdx: data.promoteIdx,
             },
           });
+          break;
         }
-        break;
-      case MessageType.PROMOTE: {
-        const data = message.data as PromoteData;
-        const destination = getDestination(data.roomId, socket);
-        if (!destination) return;
-        sendMessage(destination, {
-          type: MessageType.PROMOTE,
-          data: {
-            figure: data.figure,
-            idx: data.idx,
-            promoteIdx: data.promoteIdx,
-          },
-        });
-        break;
+        case MessageType.INVITE: {
+          const data = message.data as string;
+          const room = gameRooms.get(data);
+          if (!room) {
+            gameRooms.set(data, [socket]);
+          } else {
+            gameRooms.set(data, [...room, socket]);
+            const opponent = getDestination(data, socket);
+            const random = Math.round(Math.random());
+            if (opponent) {
+              sendMessage(socket, {
+                type: "gameFound",
+                data: {
+                  roomId: data,
+                  name: `#${queue.length + 1}`,
+                  opponent: `#${queue.length}`,
+                  color: random === 1 ? "white" : "black",
+                },
+              });
+              sendMessage(opponent, {
+                type: "gameFound",
+                data: {
+                  roomId: data,
+                  name: `#${queue.length}`,
+                  opponent: `#${queue.length + 1}`,
+                  color: random === 1 ? "black" : "white",
+                },
+              });
+            }
+          }
+        }
       }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  socket.on("close", (code, reason) => {
+    const roomId = reason.toString();
+    const room = gameRooms.get(roomId);
+    if (room) {
+      const destination = getDestination(roomId, socket);
+      if (code === 3000 && destination) {
+        sendMessage(destination, {
+          type: "opponent-leave",
+        });
+      }
+      gameRooms.delete(roomId);
     }
   });
 });

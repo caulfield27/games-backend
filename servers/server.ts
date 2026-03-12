@@ -57,6 +57,7 @@ const server = http.createServer(
       // } else {
       //   controllers[pathname](req, res);
       // }
+      res.end()
     } catch (e) {
       res.writeHead(500);
       res.end("Ошибка сервера");
