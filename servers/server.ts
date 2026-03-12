@@ -56,8 +56,7 @@ const server = http.createServer(
         });
       } else {
         controllers[pathname](req, res);
-      }
-      res.end()
+      };
     } catch (e) {
       res.writeHead(500);
       res.end("Ошибка сервера");
@@ -80,7 +79,9 @@ server.on("upgrade", (req, socket, head) => {
   }
 });
 
-server.listen(3000, () => {
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
   console.log(`Сервер запущен на ${process.env.ORIGIN_URL}`);
 });
 
