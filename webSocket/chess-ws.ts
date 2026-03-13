@@ -152,6 +152,9 @@ ws.on("connection", (socket: CustomSocket) => {
   });
 
   socket.on("close", (code, reason) => {
+    if (queue.some((q) => q.clientId === socket.clientId)) {
+      queue = queue.filter((q) => q.clientId !== socket.clientId);
+    }
     const roomId = reason.toString();
     const room = gameRooms.get(roomId);
     if (room) {

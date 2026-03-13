@@ -4,12 +4,13 @@ import { LoginPayload, RegisterPayload, User } from "../types";
 import { createUser, findUser } from "../models";
 import jwt from "jsonwebtoken";
 import { apiRoutes } from "../routes/routes";
+import { log } from "console";
 
 type RouteHandler = (req: IncomingMessage, res: ServerResponse, body?: unknown) => void;
 const config = {
   "content-type": "application/json",
 };
-const JWT_SECRET = process.env.JWT_SECRET ?? '';
+const JWT_SECRET = process.env.JWT_SECRET ?? "";
 
 export const controllers: Record<string, RouteHandler> = {
   [apiRoutes.login]: async (_, res, body) => {
